@@ -1,0 +1,121 @@
+---
+title: "Movie Data Analysis and Movie Rating Prediction"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This is a Data analysis document on Movies Data using statistical methods and Predictive algorithms
+
+```{r cars, message=FALSE, warning=FALSE}
+library(caret)
+library(e1071)
+library(ggplot2)
+library(dplyr)
+```
+
+#Reading the input file
+```{r cars2, message=FALSE, warning=FALSE}
+movies <- read.csv("C:/Users/dell/Downloads/movies.csv")
+str(movies)
+```
+
+# Removing rows with blank values
+
+```{r pressure, echo=F}
+print(paste('Total number of rows ',nrow(movies),sep = ':'))
+```
+```{r pressure2, echo=T}
+gotna <- which(!complete.cases(movies))
+movies <- movies[-gotna,]
+```
+```{r pressure3, echo=F}
+print(paste('Total number of rows ',nrow(movies),sep = ':'))
+```
+
+#Histogram of Number of reviews
+```{r pressure4, echo=T}
+ggplot(aes(x = critics_score), data = movies) + geom_histogram(bins = 20, color = 'white') + ggtitle('Histogram of Number of reviews')
+summary(movies$critics_score)
+```
+
+
+#Histogram of Movie Ratings
+```{r pressure5, echo=T}
+ggplot(aes(x = imdb_rating), data = movies) + geom_histogram(bins = 20, color = 'white') + ggtitle('Histogram of Scores')
+summary(movies$imdb_rating)
+```
+
+
+#Histogram of Movie Release Year
+```{r pressure6, echo=T}
+ggplot(aes(x = thtr_rel_year), data = movies) + geom_histogram(color='white') +
+  ggtitle('Histogram of Theater Release Year')
+```
+
+
+#Boxplot of Movie Ratings and Release Year
+```{r pressure7, echo=T}
+boxplot(imdb_rating ~ thtr_rel_year, data=movies, col='indianred')
+title("IMDB rating vs Release year")
+```
+
+#Which genre have the highest scores?
+```{r pressure8, echo=T}
+genre_group <- group_by(movies, genre)
+movie_by_genre <- summarise(genre_group,
+                              mean_score = mean(imdb_rating),
+                              n = n()) 
+
+ggplot(aes(x = genre, y = n, fill = genre), data = movie_by_genre) + geom_bar(stat = 'identity') + theme(legend.position = "none", axis.text=element_text(size=6)) +
+  coord_flip() + ggtitle('Genre vs Number of Movies')
+```
+
+
+#Which Directors movie has the highest scores?
+```{r pressure9, echo=T}
+director_group <- group_by(movies, director, genre)
+movie_by_director <- summarise(director_group,
+                               mean_score = mean(imdb_rating))
+
+movie_by_director <- movie_by_director
+movie_by_director <- movie_by_director[with(movie_by_director, order(-mean_score)), ]
+movie_by_director <- head(movie_by_director, 20)
+ggplot(aes(x = mean_score, y = director), data = movie_by_director) +
+  geom_point(aes(color = genre), size = 2) + xlab("Mean Score") + 
+  ylab("Director Name")+ theme_minimal() + ggtitle('Director, Genres & Scores')
+```
+
+#Spliting the data into train and test for a predictive model
+```{r pressure10, echo=T}
+set.seed(2017)
+train_size <- 0.8 
+train_index <- sample.int(length(movies$imdb_rating), length(movies$imdb_rating) * train_size)
+train_sample <- movies[train_index,]
+test_sample <- movies[-train_index,]
+```
+
+#Building a Muliple Linear Regression model using selected Features
+```{r pressure11, echo=T}
+fit <- lm(imdb_rating ~ critics_score + runtime  + thtr_rel_month + thtr_rel_day + thtr_rel_year + imdb_num_votes + audience_score, data=train_sample)
+summary(fit)
+```
+
+#Checking the Accuracy of a model on train and test data
+```{r pressure12, echo=T}
+train_sample$pred_score <- predict(fit, train_sample)
+train_corr <- (cor(train_sample$pred_score, train_sample$imdb_rating))
+train_mae <- (mean(abs(train_sample$pred_score - train_sample$imdb_rating)))
+c(train_corr^2, train_mae)
+
+test_sample$pred_score <- predict(fit, test_sample)
+test_corr <- (cor(test_sample$pred_score, test_sample$imdb_rating))
+test_mae <- (mean(abs(test_sample$pred_score - test_sample$imdb_rating)))
+c(test_corr^2, test_mae)
+```
+
+#Conclusion
+The most important factor that affect movie rating is the runtime and the critic score.
